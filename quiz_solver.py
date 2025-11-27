@@ -6,9 +6,10 @@ import re
 import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
-from playwright.async_api import async_playwright, Page
+from urllib.parse import urlparse
 from playwright.async_api import async_playwright, Page, TimeoutError as PlaywrightTimeoutError
 import httpx
+import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
 
@@ -33,6 +34,22 @@ class NetworkError(QuizError):
 class ExtractionError(QuizError):
     """Data extraction errors."""
     pass
+
+def validate_url(url: str) -> bool:
+    """
+    Validate if a string is a valid URL.
+    
+    Args:
+        url: URL string to validate
+        
+    Returns:
+        True if valid URL, False otherwise
+    """
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except Exception:
+        return False
 
 class QuizSolver:
     """Solve quiz tasks using browser automation and LLM."""
@@ -206,6 +223,13 @@ class QuizSolver:
             
             result = json.loads(response.choices[0].message.content)
             logger.info(f"LLM extracted quiz info: {result}")
+            
+            # Validate extracted submit URL
+            submit_url = result.get("submit_url", "")
+            if submit_url and not validate_url(submit_url):
+                logger.warning(f"Invalid submit URL extracted: {submit_url}")
+                result["submit_url"] = ""
+            
             return result
             
         except json.JSONDecodeError:
@@ -220,14 +244,16 @@ class QuizSolver:
             question_match = re.search(r'<div id="result">(.*?)</div>', content, re.DOTALL)
             question = question_match.group(1).strip() if question_match else content[:1000]
             
-            if not submit_url_match:
-                logger.warning("Could not find submit URL in fallback mode")
+            submit_url = submit_url_match.group(0) if submit_url_match else ""
+            if not submit_url or not validate_url(submit_url):
+                logger.warning("Could not find valid submit URL in fallback mode")
+                submit_url = ""
             
             return {
                 "question": question,
                 "answer_type": "string",
                 "data_sources": [],
-                "submit_url": submit_url_match.group(0) if submit_url_match else ""
+                "submit_url": submit_url
             }
     
     async def _solve_quiz(self, quiz_info: Dict[str, Any], page: Optional[Page] = None) -> Any:
@@ -404,7 +430,18 @@ class QuizSolver:
             "answer": answer
         }
         
-        logger.info(f"Submitting answer to {submit_url}")
+        # Validate payload size (1MB limit per problem statement)
+        payload_json = json.dumps(payload)
+        payload_size = len(payload_json.encode('utf-8'))
+        if payload_size > 1_000_000:  # 1MB = 1,000,000 bytes
+            logger.error(f"Payload too large: {payload_size:,} bytes (limit: 1,000,000)")
+            return {
+                "correct": False,
+                "reason": f"Answer payload exceeds 1MB limit ({payload_size:,} bytes)"
+            }
+        
+        logger.info(f"Submitting answer to {submit_url} (payload size: {payload_size:,} bytes)")
+
         
         for attempt in range(3):
             try:

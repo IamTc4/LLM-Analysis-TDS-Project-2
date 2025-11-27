@@ -84,7 +84,8 @@ async def handle_quiz(request: Request):
     # Step 1: Catch invalid JSON BEFORE validation
     try:
         data = await request.json()
-    except:
+    except Exception as e:
+        logger.error(f"JSON parsing error: {e}")
         return JSONResponse(
             status_code=400,
             content={"detail": "Invalid JSON payload"}
@@ -97,10 +98,19 @@ async def handle_quiz(request: Request):
     secret = data.get("secret")
     url = data.get("url")
     
-    if not email or not secret or not url:
+    missing_fields = []
+    if not email:
+        missing_fields.append("email")
+    if not secret:
+        missing_fields.append("secret")
+    if not url:
+        missing_fields.append("url")
+    
+    if missing_fields:
+        logger.warning(f"Missing required fields: {', '.join(missing_fields)}")
         return JSONResponse(
             status_code=400,
-            content={"detail": "Missing required fields"}
+            content={"detail": f"Missing required fields: {', '.join(missing_fields)}"}
         )
     
     # Step 3: Verify credentials
