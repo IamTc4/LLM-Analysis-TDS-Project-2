@@ -18,9 +18,11 @@ CODE_GENERATION_PROMPT = """Given this quiz question:
 
 {question}
 
+And this URL: {url}
+
 Generate Python code to solve this task. The code should:
-1. Download/fetch any required data
-2. Process and analyze the data
+1. Download/fetch any required data (use the provided URL if needed)
+2. Process and analyze the data (look for hidden elements, comments, or non-visible data if required)
 3. Return the final answer in the variable `answer`
 
 Available libraries: requests, pandas, numpy, matplotlib, plotly, beautifulsoup4, PyPDF2, openpyxl, PIL
@@ -29,7 +31,7 @@ Return ONLY executable Python code, no explanations."""
 
 # Answer Extraction Prompt
 ANSWER_EXTRACTION_PROMPT = """From the following quiz question, extract:
-1. The question being asked
+1. The complete problem statement including all instructions, constraints, and the specific question being asked.
 2. The expected answer type (number, string, boolean, file, or json)
 3. Any URLs or data sources mentioned
 4. The submission endpoint URL
@@ -39,7 +41,7 @@ Quiz content:
 
 Return as JSON:
 {{
-    "question": "the main question",
+    "question": "The complete problem statement and question",
     "answer_type": "number|string|boolean|file|json",
     "data_sources": ["url1", "url2"],
     "submit_url": "submission endpoint"

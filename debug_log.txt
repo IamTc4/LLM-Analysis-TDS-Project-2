@@ -1,0 +1,117 @@
+URL: https://tdsbasictest.vercel.app/quiz/1
+Question: <!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 1: DOM Parsing</title>
+</head>
+<body>
+    <h1>Level 1: DOM Parsing</h1>
+    <div>
+        <p><b>Task:</b> Web Scraping &amp; DOM Traversal.</p>
+        <p>Find the hidden password inside the HTML structure. It is located in a <code>div</code> with the class <code>hidden-key</code>, but the text is reversed.</p>
+        <div style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0;">
+            <div class="content">Some random content</div>
+            <div class="hidden-key" style="display:none;">!dlroWolleH</div>
+            <div class="footer">Copyright 2023</div>
+        </div>
+        <p><b>Question:</b> What is the un-reversed password?</p>
+    </div>
+    <h3>Submission</h3>
+    <p>Post your JSON answer to: <code>https://tdsbasictest.vercel.app/submit/1</code></p>
+    <pre>{
+  "email": "&lt;YOUR_EMAIL&gt;",
+  "secret": "
+Generated Code:
+answer = None
+Content Snippet: <!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 1: DOM Parsing</title>
+</head>
+<body>
+    <h1>Level 1: DOM Parsing</h1>
+    <div>
+        <p><b>Task:</b> Web Scraping &amp; DOM Traversal.</p>
+        <p>Find the hidden password inside the HTML structure. It is located in a <code>div</code> with the class <code>hidden-key</code>, but the text is reversed.</p>
+        <div style="border: 1p
+Execution Result: None
+Error generating code: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
+
+--- New Quiz Solution ---
+URL: https://tdsbasictest.vercel.app/quiz/1
+Question: <!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 1: DOM Parsing</title>
+</head>
+<body>
+    <h1>Level 1: DOM Parsing</h1>
+    <div>
+        <p><b>Task:</b> Web Scraping &amp; DOM Traversal.</p>
+        <p>Find the hidden password inside the HTML structure. It is located in a <code>div</code> with the class <code>hidden-key</code>, but the text is reversed.</p>
+        <div style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0;">
+            <div class="content">Some random content</div>
+            <div class="hidden-key" style="display:none;">!dlroWolleH</div>
+            <div class="footer">Copyright 2023</div>
+        </div>
+        <p><b>Question:</b> What is the un-reversed password?</p>
+    </div>
+    <h3>Submission</h3>
+    <p>Post your JSON answer to: <code>https://tdsbasictest.vercel.app/submit/1</code></p>
+    <pre>{
+  "email": "&lt;YOUR_EMAIL&gt;",
+  "secret": "
+Generated Code:
+answer = None
+Content Snippet: <!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 1: DOM Parsing</title>
+</head>
+<body>
+    <h1>Level 1: DOM Parsing</h1>
+    <div>
+        <p><b>Task:</b> Web Scraping &amp; DOM Traversal.</p>
+        <p>Find the hidden password inside the HTML structure. It is located in a <code>div</code> with the class <code>hidden-key</code>, but the text is reversed.</p>
+        <div style="border: 1p
+Execution Result: None
+
+--- New Quiz Solution ---
+URL: https://tdsbasictest.vercel.app/quiz/1
+Question: Task: Web Scraping & DOM Traversal. Find the hidden password inside the HTML structure. It is located in a div with the class hidden-key, but the text is reversed. Question: What is the un-reversed password?
+Generated Code:
+import requests
+from bs4 import BeautifulSoup
+
+# 1. Download/fetch the HTML content
+url = "https://tdsbasictest.vercel.app/quiz/1"
+response = requests.get(url)
+html_content = response.text
+
+# 2. Process and analyze the data
+soup = BeautifulSoup(html_content, 'html.parser')
+
+# Find the div with the class 'hidden-key'
+hidden_key_div = soup.find('div', class_='hidden-key')
+
+# Extract the text content
+reversed_password = hidden_key_div.get_text()
+
+# Un-reverse the password
+unreversed_password = reversed_password[::-1]
+
+# 3. Return the final answer
+answer = unreversed_password
+
+Content Snippet: <!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level 1: DOM Parsing</title>
+</head>
+<body>
+    <h1>Level 1: DOM Parsing</h1>
+    <div>
+        <p><b>Task:</b> Web Scraping &amp; DOM Traversal.</p>
+        <p>Find the hidden password inside the HTML structure. It is located in a <code>div</code> with the class <code>hidden-key</code>, but the text is reversed.</p>
+        <div style="border: 1p
+Execution Result: HelloWorld!

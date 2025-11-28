@@ -2,15 +2,13 @@
 import asyncio
 import json
 import logging
-import re
-import sys
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
-from urllib.parse import urlparse
+from typing import Any, Dict, Optional, List
+from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, Page, TimeoutError as PlaywrightTimeoutError
 import httpx
 import requests
-from bs4 import BeautifulSoup
+import re
+from datetime import datetime
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -18,8 +16,8 @@ import config
 from data_processor import DataProcessor
 from prompts import (
     QUIZ_SOLVER_SYSTEM_PROMPT,
-    CODE_GENERATION_PROMPT,
-    ANSWER_EXTRACTION_PROMPT
+    ANSWER_EXTRACTION_PROMPT,
+    CODE_GENERATION_PROMPT
 )
 
 logger = logging.getLogger(__name__)
@@ -170,12 +168,17 @@ class QuizSolver:
             logger.info(f"Extracted quiz info: {quiz_info}")
             
             # Solve the quiz
-            answer = await self._solve_quiz(quiz_info, page)
+            answer = await self._solve_quiz(quiz_info, quiz_url, content, page)
             logger.info(f"Generated answer: {answer}")
+            
+            # Resolve submit_url if relative
+            submit_url = quiz_info["submit_url"]
+            if submit_url and not submit_url.startswith("http"):
+                submit_url = urljoin(quiz_url, submit_url)
             
             # Submit the answer
             result = await self._submit_answer(
-                quiz_info["submit_url"],
+                submit_url,
                 quiz_url,
                 answer
             )
@@ -213,43 +216,43 @@ class QuizSolver:
             Dictionary with question, answer_type, data_sources, submit_url
         """
         try:
-            response = self.client.chat.completions.create(
-                model=config.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": "You extract structured information from quiz questions. Return valid JSON only."},
-                    {"role": "user", "content": ANSWER_EXTRACTION_PROMPT.format(content=content[:4000])}
-                ],
-                temperature=0.1,
-                response_format={"type": "json_object"}
+            # Call Gemini API
+            response = self.model.generate_content(
+                f"{QUIZ_SOLVER_SYSTEM_PROMPT}\n\n{ANSWER_EXTRACTION_PROMPT.format(content=content[:4000])}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    response_mime_type="application/json"
+                )
             )
             
-            result = json.loads(response.choices[0].message.content)
+            result = json.loads(response.text)
             logger.info(f"LLM extracted quiz info: {result}")
             
-            # Validate extracted submit URL
+            # Validate and resolve extracted submit URL
             submit_url = result.get("submit_url", "")
-            if submit_url and not validate_url(submit_url):
-                logger.warning(f"Invalid submit URL extracted: {submit_url}")
-                result["submit_url"] = ""
+            if submit_url:
+                # Resolve relative URLs
+                if not submit_url.startswith("http"):
+                    # We need the current URL to resolve relative paths. 
+                    # Since we don't pass current_url to this method, we might need to rely on the LLM or pass it.
+                    # Ideally, we should pass current_url to _extract_quiz_info.
+                    # For now, let's try to extract it from the content if possible or return relative and handle in caller.
+                    pass
             
             return result
             
-        except json.JSONDecodeError:
-            logger.error("Failed to parse LLM response as JSON")
-            raise ExtractionError("Invalid JSON from LLM")
         except Exception as e:
             logger.error(f"Error extracting quiz info: {e}")
             # Fallback: try to extract submit URL manually
-            submit_url_match = re.search(r'https://[^\s<>"]+/submit', content)
+            submit_url_match = re.search(r'https://[^\s<>"]+/submit/\d+', content)
+            if not submit_url_match:
+                 submit_url_match = re.search(r'/submit/\d+', content)
             
-            # Fallback: extract question from <div id="result"> or similar if LLM fails
+            # Fallback: extract question
             question_match = re.search(r'<div id="result">(.*?)</div>', content, re.DOTALL)
             question = question_match.group(1).strip() if question_match else content[:1000]
             
             submit_url = submit_url_match.group(0) if submit_url_match else ""
-            if not submit_url or not validate_url(submit_url):
-                logger.warning("Could not find valid submit URL in fallback mode")
-                submit_url = ""
             
             return {
                 "question": question,
@@ -258,12 +261,14 @@ class QuizSolver:
                 "submit_url": submit_url
             }
     
-    async def _solve_quiz(self, quiz_info: Dict[str, Any], page: Optional[Page] = None) -> Any:
+    async def _solve_quiz(self, quiz_info: Dict[str, Any], quiz_url: str, content: str, page: Optional[Page] = None) -> Any:
         """
         Solve the quiz using LLM to generate and execute code.
         
         Args:
             quiz_info: Extracted quiz information
+            quiz_url: The URL of the quiz
+            content: The rendered HTML content
             page: Playwright page object
             
         Returns:
@@ -273,28 +278,45 @@ class QuizSolver:
         answer_type = quiz_info.get("answer_type", "string")
         
         # Generate solution code using LLM
-        code = self._generate_solution_code(question)
+        code = self._generate_solution_code(question, quiz_url, content)
+        
+        # DEBUG: Write to file
+        with open("debug_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"\n--- New Quiz Solution ---\n")
+            f.write(f"URL: {quiz_url}\n")
+            f.write(f"Question: {question}\n")
+            f.write(f"Generated Code:\n{code}\n")
+            f.write(f"Content Snippet: {content[:500]}\n")
         
         # Execute the code safely
         answer = self._execute_solution_code(code, quiz_info)
         
+        # DEBUG: Append answer
+        with open("debug_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"Execution Result: {answer}\n")
+        
         # Format answer based on type
         return self._format_answer(answer, answer_type)
     
-    def _generate_solution_code(self, question: str) -> str:
+    def _generate_solution_code(self, question: str, url: str, content: str) -> str:
         """
         Generate Python code to solve the quiz using LLM.
         
         Args:
             question: The quiz question
+            url: The quiz URL
+            content: The rendered HTML content
             
         Returns:
             Python code as string
         """
         try:
             # Call Gemini API
+            # We pass a truncated version of content to avoid token limits if it's huge
+            truncated_content = content[:10000]
+            
             response = self.model.generate_content(
-                f"{QUIZ_SOLVER_SYSTEM_PROMPT}\n\n{CODE_GENERATION_PROMPT.format(question=question)}",
+                f"{QUIZ_SOLVER_SYSTEM_PROMPT}\n\n{CODE_GENERATION_PROMPT.format(question=question, url=url)}\n\nPage Content Context:\n{truncated_content}",
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.2
                 )
@@ -313,6 +335,10 @@ class QuizSolver:
             
         except Exception as e:
             logger.error(f"Error generating code: {e}")
+            with open("debug_log.txt", "a", encoding="utf-8") as f:
+                f.write(f"Error generating code: {e}\n")
+                if 'response' in locals() and hasattr(response, 'prompt_feedback'):
+                    f.write(f"Prompt Feedback: {response.prompt_feedback}\n")
             return "answer = None"
     
     def _execute_solution_code(self, code: str, quiz_info: Dict[str, Any]) -> Any:

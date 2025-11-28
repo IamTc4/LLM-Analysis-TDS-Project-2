@@ -12,7 +12,7 @@ STUDENT_SECRET = os.getenv("STUDENT_SECRET", "")
 # OpenAI Configuration
 # Google Gemini Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 # Server Configuration
 HOST = os.getenv("HOST", "0.0.0.0")
