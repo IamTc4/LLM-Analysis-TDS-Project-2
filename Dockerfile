@@ -52,7 +52,7 @@ USER appuser
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 
 # Install Playwright browsers as the non-root user
-RUN playwright install --with-deps chromium
+RUN playwright install chromium
 
 # Expose the port
 EXPOSE 8000
