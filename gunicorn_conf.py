@@ -1,8 +1,13 @@
 import multiprocessing
 import os
 
+# Debug: Log PORT value for troubleshooting
+port = os.getenv('PORT', '8000')
+print(f"🔍 DEBUG: PORT environment variable = '{port}'")
+print(f"🔍 DEBUG: Binding to 0.0.0.0:{port}")
+
 # Bind to Render's PORT or default to 8000
-bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
+bind = f"0.0.0.0:{port}"
 
 # Worker configuration
 workers = multiprocessing.cpu_count() * 2 + 1
