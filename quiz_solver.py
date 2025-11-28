@@ -11,7 +11,8 @@ from playwright.async_api import async_playwright, Page, TimeoutError as Playwri
 import httpx
 import requests
 from bs4 import BeautifulSoup
-from openai import OpenAI
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 import config
 from data_processor import DataProcessor
@@ -55,10 +56,8 @@ class QuizSolver:
     """Solve quiz tasks using browser automation and LLM."""
     
     def __init__(self):
-        self.client = OpenAI(
-            api_key=config.OPENAI_API_KEY,
-            base_url=config.OPENAI_BASE_URL
-        )
+        genai.configure(api_key=config.GOOGLE_API_KEY)
+        self.model = genai.GenerativeModel(config.GEMINI_MODEL)
         self.data_processor = DataProcessor()
         self.start_time: Optional[datetime] = None
         self.http_client = httpx.AsyncClient(timeout=30.0)
@@ -293,16 +292,15 @@ class QuizSolver:
             Python code as string
         """
         try:
-            response = self.client.chat.completions.create(
-                model=config.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": QUIZ_SOLVER_SYSTEM_PROMPT},
-                    {"role": "user", "content": CODE_GENERATION_PROMPT.format(question=question)}
-                ],
-                temperature=0.2
+            # Call Gemini API
+            response = self.model.generate_content(
+                f"{QUIZ_SOLVER_SYSTEM_PROMPT}\n\n{CODE_GENERATION_PROMPT.format(question=question)}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.2
+                )
             )
             
-            code = response.choices[0].message.content
+            code = response.text
             
             # Extract code from markdown if present
             if "```python" in code:
@@ -364,15 +362,13 @@ class QuizSolver:
             Direct answer
         """
         try:
-            response = self.client.chat.completions.create(
-                model=config.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": QUIZ_SOLVER_SYSTEM_PROMPT},
-                    {"role": "user", "content": f"Answer this question directly, return only the answer:\n{question}"}
-                ],
-                temperature=0.1
+            response = self.model.generate_content(
+                f"{QUIZ_SOLVER_SYSTEM_PROMPT}\n\nAnswer this question directly, return only the answer:\n{question}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1
+                )
             )
-            return response.choices[0].message.content.strip()
+            return response.text.strip()
         except Exception as e:
             logger.error(f"Error getting direct answer: {e}")
             return ""

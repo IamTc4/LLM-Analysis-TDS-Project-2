@@ -10,10 +10,9 @@ STUDENT_EMAIL = os.getenv("STUDENT_EMAIL", "")
 STUDENT_SECRET = os.getenv("STUDENT_SECRET", "")
 
 # OpenAI Configuration
-# OpenAI Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-OPENAI_MODEL = "gpt-4o-mini"  # Using GPT-4o-mini for better availability and speed
+# Google Gemini Configuration
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+GEMINI_MODEL = "gemini-1.5-flash"
 
 # Server Configuration
 HOST = os.getenv("HOST", "0.0.0.0")
@@ -44,8 +43,8 @@ def validate_config():
         missing.append("STUDENT_EMAIL")
     if not STUDENT_SECRET:
         missing.append("STUDENT_SECRET")
-    if not OPENAI_API_KEY:
-        missing.append("OPENAI_API_KEY")
+    if not GOOGLE_API_KEY:
+        missing.append("GOOGLE_API_KEY")
     
     if missing:
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
