@@ -1,7 +1,9 @@
 FROM python:3.11-slim
 
-# Install system dependencies for Playwright
-RUN apt-get update && apt-get install -y \
+WORKDIR /app
+
+# Install system dependencies for Playwright and Chromium
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
     ca-certificates \
@@ -23,44 +25,29 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxkbcommon0 \
     libxrandr2 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxext6 \
+    libxrender1 \
     xdg-utils \
-    && rm -rf /var/lib/apt/lists/*
-
-# Build stage
-FROM python:3.9-slim as builder
-
-WORKDIR /app
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-
-# Final stage
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
-COPY --from=builder /install /usr/local
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-# Install Playwright browsers
+# Install Playwright browsers (MUST be done as root)
 RUN playwright install --with-deps chromium
 
 # Copy application code
 COPY . .
 
-# Create non-root user
+# Create non-root user and set permissions
 RUN useradd -m appuser && chown -R appuser:appuser /app
+
+# Switch to non-root user
 USER appuser
 
 # Expose port

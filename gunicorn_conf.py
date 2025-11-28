@@ -7,16 +7,15 @@ bind = "0.0.0.0:8000"
 # Worker configuration
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"
-timeout = 120
+
+# Timeout settings (important for long-running quiz solving)
+timeout = 300
 keepalive = 5
 
 # Logging
-loglevel = "info"
 accesslog = "-"
 errorlog = "-"
+loglevel = "info"
 
-# Process naming
-proc_name = "llm-analysis-quiz"
-
-# Reload for development (disable in production)
+# Development mode
 reload = os.getenv("FLASK_ENV") == "development"
