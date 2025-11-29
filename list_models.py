@@ -2,7 +2,7 @@ import os
 import google.generativeai as genai
 
 # Inject credentials explicitly
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDD8cUMuIHAbyVn4EO30uzg-Y4hA2VaX6Q"
+os.environ["GOOGLE_API_KEY"] = "AIzaSyCFcOVLoqvpN7Y9M7-9dce-iY83VajHUPw"
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
 print("Listing available models...")
